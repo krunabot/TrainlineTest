@@ -14,12 +14,17 @@ namespace CurrencyConverter.Tests
 {
     public class ControllerTests
     {
+        Mock<IHttpClientFactory> factoryMock;
         Mock<HttpMessageHandler> handlerMock;
+        RequestData requestData;
         ResponseData responseData;
         HttpResponseMessage response;
 
         public ControllerTests()
         {
+            factoryMock = new Mock<IHttpClientFactory>();
+
+
             handlerMock = new Mock<HttpMessageHandler>();
             handlerMock
                .Protected()
@@ -31,6 +36,7 @@ namespace CurrencyConverter.Tests
                .ReturnsAsync(response);
 
             responseData = new ResponseData();
+            requestData = new RequestData();
             response = new HttpResponseMessage();
         }
 
@@ -40,12 +46,17 @@ namespace CurrencyConverter.Tests
             // Arrange
             response.StatusCode = HttpStatusCode.OK;
             response.Content = new StringContent(@"{ ""rates"": {""USD"" : 1.3710144928 },""base"": ""GBP"",""date"": ""2021 - 03 - 25""}");
+            requestData.Price = 1;
+            requestData.SourceCurrency = "GBP";
+            requestData.TargetCurrency = "USD";
 
             var httpClient = new HttpClient(handlerMock.Object);
+            factoryMock.Setup(_ => _.CreateClient(It.IsAny<string>()))
+                .Returns(httpClient).Verifiable();
 
             // Act
-            var controller = new GetDataController(httpClient);
-            var getDataController = await controller.GetPrice(1, "GBP", "USD") ;
+            var controller = new GetCurrencyConversionDataController(factoryMock.Object);
+            var getDataController = await controller.GetPrice(requestData) ;
             var expectedUri = new Uri("https://api.exchangeratesapi.io/latest?base=GBP&symbols=USD");
 
             //Assert
@@ -65,12 +76,17 @@ namespace CurrencyConverter.Tests
             // Arrange
             response.StatusCode = HttpStatusCode.BadRequest;
             response.Content = new StringContent(@"{ ""error"": ""Base 'XXX' is not supported.""}");
+            requestData.Price = 1;
+            requestData.SourceCurrency = "XXX";
+            requestData.TargetCurrency = "USD";
 
             var httpClient = new HttpClient(handlerMock.Object);
+            factoryMock.Setup(_ => _.CreateClient(It.IsAny<string>()))
+                .Returns(httpClient).Verifiable();
 
             // Act
-            var controller = new GetDataController(httpClient);
-            var getDataController = await controller.GetPrice(1, "XXX", "USD");
+            var controller = new GetCurrencyConversionDataController(factoryMock.Object);
+            var getDataController = await controller.GetPrice(requestData);
             var expectedUri = new Uri("https://api.exchangeratesapi.io/latest?base=XXX&symbols=USD");
 
             //Assert
@@ -90,11 +106,17 @@ namespace CurrencyConverter.Tests
             // Arrange
             response.StatusCode = HttpStatusCode.BadRequest;
             response.Content = new StringContent(@"{ ""error"": ""Symbols 'ZZZ' are invalid for date 2021-03-25.""}");
+            requestData.Price = 1;
+            requestData.SourceCurrency = "GBP";
+            requestData.TargetCurrency = "ZZZ";
+
             var httpClient = new HttpClient(handlerMock.Object);
+            factoryMock.Setup(_ => _.CreateClient(It.IsAny<string>()))
+                .Returns(httpClient).Verifiable();
 
             // Act
-            var controller = new GetDataController(httpClient);
-            var getDataController = await controller.GetPrice(1, "GBP", "ZZZ");
+            var controller = new GetCurrencyConversionDataController(factoryMock.Object);
+            var getDataController = await controller.GetPrice(requestData);
             var expectedUri = new Uri("https://api.exchangeratesapi.io/latest?base=GBP&symbols=ZZZ");
 
             //Assert
@@ -115,7 +137,7 @@ namespace CurrencyConverter.Tests
         public void CheckThrowsExceptionWhenSourceOrTargetIsNull(string source, string target)
         {
             // Act
-            var ex = Assert.Throws<ArgumentNullException>(() => GetDataController.ValidateInput(source, target));
+            var ex = Assert.Throws<ArgumentNullException>(() => GetCurrencyConversionDataController.ValidateInput(source, target));
 
             //Assert
             Assert.Equal("Value cannot be null. (Parameter 'Input Currencies cannot be Null.')", ex.Message);
@@ -126,7 +148,7 @@ namespace CurrencyConverter.Tests
         public void CheckThrowsExceptionWhenSourceAndTargetCurrenciesAreEqual()
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => GetDataController.ValidateInput("GBP", "GBP"));
+            var ex = Assert.Throws<ArgumentException>(() => GetCurrencyConversionDataController.ValidateInput("GBP", "GBP"));
 
             //Assert
             Assert.Equal("Source and Target Currencies must be different.", ex.Message);

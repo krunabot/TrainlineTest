@@ -21,15 +21,17 @@ namespace CurrencyConverter
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddHttpClient();  //Add Httpclient Factory
 
-            Uri endPointA = new Uri("http://localhost:2400/");
-            HttpClient httpClient = new HttpClient()
-            {
-                BaseAddress = endPointA,
-            };
 
-            ServicePointManager.FindServicePoint(endPointA).ConnectionLeaseTimeout = 60000;
-            services.AddSingleton<HttpClient>(httpClient);
+            //Uri endPointA = new Uri("http://localhost:2400/");
+            //HttpClient httpClient = new HttpClient()
+            //{
+            //    BaseAddress = endPointA,
+            //};
+
+            //ServicePointManager.FindServicePoint(endPointA).ConnectionLeaseTimeout = 60000;
+            //services.AddSingleton<HttpClient>(httpClient);
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
